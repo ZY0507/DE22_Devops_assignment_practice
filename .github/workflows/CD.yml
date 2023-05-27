@@ -50,28 +50,33 @@ jobs:
       - name: Setup Docker buildx
         uses: docker/setup-buildx-action@a946f06b5ddbde456d0115dc585e8dc3c7a0c3e0
 
+      #set up a environment again 
+      - name: Load environment variables
+        uses: actions/github-script@v5
+        with:
+          script: |
+            require('dotenv').config();
+            
       # Login against a Docker registry except on PR
       # https://github.com/docker/login-action
       - name: Log into registry ${{ env.REGISTRY }}
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@28218f9b04b4f3f62068d7b6ce6ca5b26e35336c
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "DOCKER_USERNAME=${{ github.actor }}" >> $GITHUB_ENV
+          echo "DOCKER_PASSWORD=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+          docker/login-action@28218f9b04b4f3f62068d7b6ce6ca5b26e35336c
         env:
-          DOCKER_USERNAME: ${{ github.actor }}
-          DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ENV: ${{ github.workspace }}/.env
 
       # Extract metadata (tags, labels) for Docker
       # https://github.com/docker/metadata-action
       - name: Extract Docker metadata
         id: meta
-        uses: docker/metadata-action@c4ee3adeed93b1fa6a762f209fb01608c1a22f1e
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        run: |
+          echo "IMAGES=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" >> $GITHUB_ENV
+          docker/metadata-action@c4ee3adeed93b1fa6a762f209fb01608c1a22f1e
         env:
-          IMAGES: ${{ steps.meta.outputs.tags }}
+          GITHUB_ENV: ${{ github.workspace }}/.env
 
 
       # Build and push Docker image with Buildx (don't push on PR)
@@ -79,17 +84,16 @@ jobs:
           
       - name: Build and push Docker image
         id: build-and-push
-        uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a
-        with:
-          context: .
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+        run: |
+          docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a
+            --context .
+            --push ${{ github.event_name != 'pull_request' }}
+            --tags ${{ steps.meta.outputs.tags }}
+            --labels ${{ steps.meta.outputs.labels }}
+            --cache-from type=gha
+            --cache-to type=gha,mode=max
         env:
-          DOCKER_USERNAME: ${{ github.actor }}
-          DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ENV: ${{ github.workspace }}/.env
 
 
       # Sign the resulting Docker image digest except on PRs.
