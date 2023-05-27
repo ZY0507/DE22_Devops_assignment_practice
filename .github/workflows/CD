@@ -15,6 +15,7 @@ env:
   REGISTRY: ghcr.io
   # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
+  GITHUB_ENV: ${{ github.workspace }}/.env
 
 
 jobs:
@@ -36,7 +37,7 @@ jobs:
       # https://github.com/sigstore/cosign-installer
       - name: Install cosign
         if: github.event_name != 'pull_request'
-        uses: sigstore/cosign-installer@f3c664df7af409cb4873aa5068053ba9d61a57b6 #v2.6.0
+        uses: sigstore/cosign-installer@1a22e17968bb5f9192b82a39d3ffb322627f5169 #v4.0.1
         with:
           cosign-release: 'v1.13.1'
           
@@ -54,11 +55,22 @@ jobs:
       # https://github.com/docker/login-action
       - name: Log into registry ${{ env.REGISTRY }}
         if: github.event_name != 'pull_request'
+<<<<<<< HEAD:.github/workflows/CD.yml
         run: |
           echo "DOCKER_USERNAME=${{ github.actor }}" >> $GITHUB_ENV
           echo "DOCKER_PASSWORD=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
           docker/login-action@28218f9b04b4f3f62068d7b6ce6ca5b26e35336c
         env:
+=======
+        uses: docker/login-action@40891eba8c2bcd1309b07ba8b11232f313e86779
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          DOCKER_USERNAME: ${{ github.actor }}
+          DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+>>>>>>> e4308f407baad4feaf65020a05ed72e5147ebd97:.github/workflows/CD
           GITHUB_ENV: ${{ github.workspace }}/.env
 
       # Extract metadata (tags, labels) for Docker
@@ -69,6 +81,10 @@ jobs:
           echo "IMAGES=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" >> $GITHUB_ENV
           docker/metadata-action@c4ee3adeed93b1fa6a762f209fb01608c1a22f1e
         env:
+<<<<<<< HEAD:.github/workflows/CD.yml
+=======
+          IMAGES: ${{ steps.meta.outputs.tags }}
+>>>>>>> e4308f407baad4feaf65020a05ed72e5147ebd97:.github/workflows/CD
           GITHUB_ENV: ${{ github.workspace }}/.env
 
 
@@ -77,6 +93,7 @@ jobs:
           
       - name: Build and push Docker image
         id: build-and-push
+<<<<<<< HEAD:.github/workflows/CD.yml
         run: |
           docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a
             --context .
@@ -85,6 +102,16 @@ jobs:
             --labels ${{ steps.meta.outputs.labels }}
             --cache-from type=gha
             --cache-to type=gha,mode=max
+=======
+        uses: docker/build-push-action@91df6b874e498451163feb47610c87c4a218c1ee
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+>>>>>>> e4308f407baad4feaf65020a05ed72e5147ebd97:.github/workflows/CD
         env:
           GITHUB_ENV: ${{ github.workspace }}/.env
 
