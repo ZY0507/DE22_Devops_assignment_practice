@@ -7,6 +7,8 @@ on:
     branches:
       - main
       - dev*
+    tags:
+      - 'v*'
       
   pull_request:
     branches:
