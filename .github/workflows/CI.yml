@@ -9,8 +9,8 @@ on:
     branches:
       - main
       - 'dev*'
-  
-  pull request:
+      
+  pull_request:
     branches:
       - main 
 
@@ -20,21 +20,21 @@ jobs:
 
     steps:
     
-name: Checkout Repository
-    uses: actions/checkout@v3
+    -   name: Checkout Repository
+        uses: actions/checkout@v3
     
-name: Set up Go
-    uses: actions/setup-go@v3
-    with:
-      go-version: '1.20.x'
+    -   name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+         go-version: '1.20.x'
       
-name: Build 
-run: |
-    set CGO_ENABLED = 0
-    set GOOS = linux
-    set GOARCH = amd64
-    go build -o build/endpoint main.go
+    -   name: Build
+        run: |
+          set CGO_ENABLED = 0
+          set GOOS = linux
+          set GOARCH = amd64
+          go build -o build/endpoint main.go
 
-name: Test
-run:
-  go test ./...
+    -   name: Test
+        run:
+            go test ./...
