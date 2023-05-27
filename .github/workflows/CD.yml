@@ -15,6 +15,7 @@ env:
   REGISTRY: ghcr.io
   # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
+  GITHUB_ENV: ${{ github.workspace }}/.env
 
 
 jobs:
