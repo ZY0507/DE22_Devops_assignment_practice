@@ -37,7 +37,7 @@ jobs:
       # https://github.com/sigstore/cosign-installer
       - name: Install cosign
         if: github.event_name != 'pull_request'
-        uses: sigstore/cosign-installer@f3c664df7af409cb4873aa5068053ba9d61a57b6 #v2.6.0
+        uses: sigstore/cosign-installer@1a22e17968bb5f9192b82a39d3ffb322627f5169 #v4.0.1
         with:
           cosign-release: 'v1.13.1'
           
@@ -55,7 +55,7 @@ jobs:
       # https://github.com/docker/login-action
       - name: Log into registry ${{ env.REGISTRY }}
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@28218f9b04b4f3f62068d7b6ce6ca5b26e35336c
+        uses: docker/login-action@40891eba8c2bcd1309b07ba8b11232f313e86779
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -63,6 +63,7 @@ jobs:
         env:
           DOCKER_USERNAME: ${{ github.actor }}
           DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ENV: ${{ github.workspace }}/.env
 
       # Extract metadata (tags, labels) for Docker
       # https://github.com/docker/metadata-action
@@ -73,6 +74,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         env:
           IMAGES: ${{ steps.meta.outputs.tags }}
+          GITHUB_ENV: ${{ github.workspace }}/.env
 
 
       # Build and push Docker image with Buildx (don't push on PR)
@@ -80,7 +82,7 @@ jobs:
           
       - name: Build and push Docker image
         id: build-and-push
-        uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a
+        uses: docker/build-push-action@91df6b874e498451163feb47610c87c4a218c1ee
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
