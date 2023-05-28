@@ -34,9 +34,10 @@ jobs:
         with:
           go-version: '1.20.x' # Configure the workflow by using Go version newer than 1.20
 
+        # Set some environment variables
       - name: Build
         run: |
-          set CGO_ENABLED=0 # Set some environment variables
+          set CGO_ENABLED=0 
           set GOOS=linux
           set GOARCH=amd64
           go build -o build/endpoint main.go
@@ -46,29 +47,35 @@ jobs:
           go test ./... # run the go test
 
   build:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') # Execute if there is a tag starts with "v"
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-      id-token: write
+      id-token: write 
+      #  Complete the identity challenge for the job with sigstore/fulcio when running outside of pull request.
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Install the cosign tool except on pull request
+      # https://github.com/sigstore/cosign-installer
       - name: Install cosign
         if: github.event_name != 'pull_request'
-        uses: sigstore/cosign-installer@1a22e17968bb5f9192b82a39d3ffb322627f5169 #v4.0.1
+        uses: sigstore/cosign-installer@1a22e17968bb5f9192b82a39d3ffb322627f5169 # v4.0.1
         with:
-          cosign-release: 'v1.13.1'
+          cosign-release: 'v2.0.2' 
 
+      # https://github.com/docker/build-push-action
       - name: Setup Docker buildx
-        uses: docker/setup-buildx-action@a946f06b5ddbde456d0115dc585e8dc3c7a0c3e0
+        uses: docker/setup-buildx-action@a946f06b5ddbde456d0115dc585e8dc3c7a0c3e0 # Newest since 11 May 2023
 
+      # Login into Docker registry except on pull request
+      # https://github.com/docker/login-action
       - name: Log into registry ${{ env.REGISTRY }}
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@40891eba8c2bcd1309b07ba8b11232f313e86779
+        uses: docker/login-action@40891eba8c2bcd1309b07ba8b11232f313e86779 # Newest since 17 April 2023
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -78,21 +85,35 @@ jobs:
           DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ENV: ${{ github.workspace }}/.env
 
+      # Extract metadata (tags, labels) for Docker
+      # https://github.com/docker/metadata-action
       - name: Extract Docker metadata
         id: meta
-        uses: docker/metadata-action@c4ee3adeed93b1fa6a762f209fb01608c1a22f1e
+        uses: docker/metadata-action@c4ee3adeed93b1fa6a762f209fb01608c1a22f1e # Newest since 18 April 2023
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         env:
           IMAGES: ${{ steps.meta.outputs.tags }}
           GITHUB_ENV: ${{ github.workspace }}/.env
 
+      # Build and push Docker image with Buildx (except on pull request)
+      # https://github.com/docker/build-push-action
       - name: Build and push Docker image
         id: build-and-push
-        uses: docker/build-push-action@91df6b874e498451163feb47610c87c4a218c1ee
+        uses: docker/build-push-action@91df6b874e498451163feb47610c87c4a218c1ee # Newest since 11 May 2023
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type
+          
+      # Docker image digest signing process will be performed, except on pull request.
+      # The transparency log will only be written, if the Docker repository is public, to prevent data leakage, 
+      # But can be forced with the --force flag for private images.
+      # https://github.com/sigstore/cosign
+      - name: Sign the published Docker image
+        if: ${{ github.event_name != 'pull_request' }}
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+        run: echo "${{ steps.meta.outputs.tags }}" | xargs -I {} cosign sign {}@${{ steps.build-and-push.outputs.digest }}
